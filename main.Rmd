@@ -1,0 +1,248 @@
+---
+title: "DSTI_TimeSeries"
+output: html_notebook
+---
+
+
+```{r}
+install.packages("readxl")
+install.packages("fpp2")
+```
+
+```{r}
+library(ggfortify)
+library(readr)
+library(forecast)
+```
+
+
+```{r}
+'data_raw <- read_excel("data\\raw\\Elec-train.xlsx")
+data <- read_excel("data\\processed\\Elec-train-processed-2.xlsx", col_names = TRUE, col_types = c("date", "numeric", "numeric"))
+'
+data <- read_csv2("data\\processed\\Elec-train-processed-2.csv", col_names = TRUE, col_types = c("n", "n"))
+```
+
+```{r}
+autoplot(as.ts(data))
+```
+
+
+
+```{r}
+# convert date column to date class
+data$Timestamp <- as.POSIXlt(data$Timestamp, format = "%m/%d/%y  %H:%M")
+
+# view R class of data
+class(data$Timestamp)
+## [1] "Date"
+
+# view results
+head(data$Timestamp)
+```
+
+
+```{r}
+data_known <- ts(data[1:4603,], frequency = 96)
+data_to_forecast <- ts(data[4604:4699,], frequency = 96)
+#data_known_5 <- ts(data[1:4603,], frequency = 5)
+
+#$Power <- ts(data$Power, frequency = 96)
+#data$Temp <- ts(data$Temp, frequency = 96)
+#Power <- data$Power
+#Temp <- data$Temp'
+```
+
+
+First of all we ensure that the TimeStamp column has always the same duration between all TimeStamp.
+
+```{r}
+plot(data$Power,type='l',xlim=c(1,4603),ylim=c(120,360),xlab='Time',ylab='Power (kW)')
+```
+
+
+```{r}
+plot(data$Temp,type='l',xlim=c(1,4603),ylim=c(4,20),xlab='Time',ylab='Temperature (°C)')
+```
+
+```{r}
+autoplot(data)
+```
+
+Timestamp per day = 96
+Nb total rows for Power = 4603 => 47 days + 91 timestamps
+Train => 80% => 3682.4 => floor(3682.4) => 3682 => 38 days + 34 timestamps
+Test => 20% => 920.6 => floor(920.6) => 921 => 9 days + 57 timestamps
+
+
+```{r}
+elec_train=window(data_known,start=c(1,1),end=c(39,35))
+elec_test=window(data_known,start=c(39,36),end=c(48,91))
+```
+
+Other definition
+
+```{r}
+
+h2 <- 921L
+#h2 <- 184L
+elec_train2 <- head(data_known, round(length(data_known)/2 - h2))
+elec_test2 <- tail(data_known, h2)
+```
+
+```{r}
+elec_train <- elec_train2
+elec_test <- elec_test2
+```
+
+
+```{r}
+data_known_Power <- data_known[,1]
+elec_train_Power <- elec_train[,1]
+elec_test_Power <- elec_test[,1]
+data_known_Temp <- data_known[,2]
+elec_train_Temp <- elec_train[,2]
+elec_test_Temp <- elec_test[,2]
+elec_forcast_Temp <- data_to_forecast[,2]
+summary(data_known_Power)
+summary(data_known_Temp)
+```
+```{r}
+ggtsdisplay(data_known_Power)
+```
+Seasonal pattern
+
+```{r}
+plot(data_known_Power[1:96],type="l",ylim=c(min(data_known_Power),max(data_known_Power)))
+for (i in 1:4603) lines(data_known_Power[(1+96*i):(96*(i+1))])
+```
+
+
+
+
+FORECASTING WITHOUT COVARIATES (Power)
+
+1- Holt-Winters exponential smoothing
+
+```{r}
+fit1=hw(elec_train_Power,lambda="auto")
+prev1=forecast(fit1,h=921)
+autoplot(prev1) + autolayer(elec_test_Power, series="true data")+
+autolayer(prev1$mean, series="HW forecasts")
+```
+Frequency is too high to use Holt-Winters = Holt-Winters is really made for shorter seasonal periods.
+
+2- SARIMA model
+
+```{r}
+fit2=auto.arima(elec_train_Power,lambda="auto")
+prev2=forecast(fit2, h=921)
+autoplot(elec_test_Power)+autolayer(prev2$mean,series="SARIMA without covariate")
+```
+RMSE :
+```{r}
+print(sqrt(mean((prev2$mean-elec_test_Power)^2)))
+```
+
+
+```{r}
+autoplot(diff(elec_train_Power,lag = 96))
+```
+
+
+Forecasting with covariates
+
+3 - Auto Arima
+
+```{r}
+elec_train_Temp_ts <- elec_train[,1] <- list(NULL) 
+elec_train_Temp_ts
+```
+
+
+```{r}
+fit3=auto.arima(elec_train[,"Power"],xreg=elec_train[,"Temp"])
+prev3=forecast(fit3,h=921,xreg=elec_test_Temp)
+autoplot(elec_test_Power)+autolayer(prev3$mean)
+```
+```{r}
+print(sqrt(mean((prev3$mean-elec_test_Power)^2)))
+```
+```{r}
+summary(fit3)
+```
+```{r}
+checkresiduals(fit3)
+```
+P-value is very low and it seems that there is not really a relationship between Power and Temp :
+```{r}
+plot(elec_train[,"Power"],elec_train[,"Temp"])
+```
+
+## Forecasting with a auto-regressive neural network
+
+```{r}
+fit4=nnetar(elec_train[,"Power"],T=96)
+print(fit4)
+prevNN=forecast(fit4,h=921)
+autoplot(elec_test_Power)+autolayer(prevNN$mean)
+```
+RMSE :
+```{r}
+print(sqrt(mean((prevNN$mean-elec_test_Power)^2)))
+```
+
+Manual improvements as the result proposed by the default settings are not suitable :
+
+```{r}
+fit5=nnetar(elec_train[,"Power"],p=8,P=10,T=96)
+print(fit5)
+prevNN5=forecast(fit5,h=921)
+autoplot(elec_test_Power)+autolayer(prevNN5$mean)
+```
+
+RMSE :
+```{r}
+print(sqrt(mean((prevNN5$mean-elec_test_Power)^2)))
+```
+
+Forecast based on Power only with NN
+
+```{r}
+autoplot(forecast(fit5,h=96))
+```
+
+## Forecasting with a auto-regressive neural network with covariates
+
+```{r}
+fit5=nnetar(elec_train[,"Power"], xreg=elec_train[,"Temp"],  T=96)
+print(fit5)
+prevNN5=forecast(fit5, xreg=elec_test[,"Temp"], h=921)
+autoplot(elec_test_Power)+autolayer(prevNN5$mean)
+```
+
+RMSE :
+```{r}
+print(sqrt(mean((prevNN5$mean-elec_test_Power)^2)))
+```
+
+Manual improvements as the result proposed by the default settings are not suitable :
+
+```{r}
+fit6=nnetar(elec_train[,"Power"], xreg=elec_train[,"Temp"],p=8,P=10,T=96)
+print(fit6)
+prevNN6=forecast(fit6, xreg=elec_test[,"Temp"],h=921)
+autoplot(elec_test_Power)+autolayer(prevNN6$mean)
+```
+
+RMSE :
+```{r}
+print(sqrt(mean((prevNN6$mean-elec_test_Power)^2)))
+```
+
+Forecast based on Power and Temp with NN
+
+```{r}
+forecast_NN_Cov <- forecast(fit6,xreg=elec_forcast_Temp,h=96)
+autoplot(forecast_NN_Cov)
+```
