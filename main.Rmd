@@ -1,20 +1,49 @@
 ---
 title: "DSTI_TimeSeries"
-output: html_notebook
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
 ---
 
+## Objective
+
+Based on a dataset of two variables named Power and Temperature, we have to predict 96 timestamps concerning the Power variable. In order to do it, we have to use several solutions seen in class, using the Temperature as a covariate and not.
+
+## Deliverable
+
+Two prediction of the 96 timestamps, based on the two best prediction methods.
+
+## Notebook
+
+# Package installation:
 
 ```{r}
-install.packages("readxl")
-install.packages("fpp2")
+#Read Excel Files
+#install.packages("readxl")
+#Data for "Forecasting: Principles and Practice"
+#install.packages("fpp2")
+#Time Series Analysis and Computational Finance
+#install.packages("tseries")
 ```
 
+# Import libraries:
+
 ```{r}
+#Data Visualization Tools for Statistical Analysis Results
 library(ggfortify)
+#Read Rectangular Text Data
 library(readr)
+#Forecasting Functions for Time Series and Linear Models
 library(forecast)
+#Access to Augmented Dickey-Fuller Test
+library(tseries)
+# Scatter stats
+library(ggstatsplot)
 ```
 
+# Data importation:
 
 ```{r}
 'data_raw <- read_excel("data\\raw\\Elec-train.xlsx")
@@ -23,226 +52,417 @@ data <- read_excel("data\\processed\\Elec-train-processed-2.xlsx", col_names = T
 data <- read_csv2("data\\processed\\Elec-train-processed-2.csv", col_names = TRUE, col_types = c("n", "n"))
 ```
 
+# Exploratory analysis / Data overview:
+
 ```{r}
 autoplot(as.ts(data))
 ```
 
+# Data Preparation
 
+First of all we ensure that the TimeStamp column has always the same duration between all timestamps.
+Concerning the timestamps, we can already consider these assumptions: 
+- Timestamp per day = 96
+- Nb total rows for Power = 4603 => 47 days + 91 timestamps
 
-```{r}
-# convert date column to date class
-data$Timestamp <- as.POSIXlt(data$Timestamp, format = "%m/%d/%y  %H:%M")
-
-# view R class of data
-class(data$Timestamp)
-## [1] "Date"
-
-# view results
-head(data$Timestamp)
-```
-
+In order to train and test our next predictive models, we will split our dataset into train and test by a 0.8 ration.
+- Train => 80% => 3682.4 => floor(3682.4) => 3682 => 38 days + 34 timestamps
+- Test => 20% => 920.6 => floor(920.6) => 921 => 9 days + 57 timestamps
 
 ```{r}
+# data_known = acquired timestamps values for both Power and Temp
 data_known <- ts(data[1:4603,], frequency = 96)
+# data_to_forecast = Power data which needs to be predicted/forecast
 data_to_forecast <- ts(data[4604:4699,], frequency = 96)
-#data_known_5 <- ts(data[1:4603,], frequency = 5)
-
-#$Power <- ts(data$Power, frequency = 96)
-#data$Temp <- ts(data$Temp, frequency = 96)
-#Power <- data$Power
-#Temp <- data$Temp'
-```
-
-
-First of all we ensure that the TimeStamp column has always the same duration between all TimeStamp.
-
-```{r}
-plot(data$Power,type='l',xlim=c(1,4603),ylim=c(120,360),xlab='Time',ylab='Power (kW)')
-```
-
-
-```{r}
-plot(data$Temp,type='l',xlim=c(1,4603),ylim=c(4,20),xlab='Time',ylab='Temperature (°C)')
 ```
 
 ```{r}
-autoplot(data)
-```
-
-Timestamp per day = 96
-Nb total rows for Power = 4603 => 47 days + 91 timestamps
-Train => 80% => 3682.4 => floor(3682.4) => 3682 => 38 days + 34 timestamps
-Test => 20% => 920.6 => floor(920.6) => 921 => 9 days + 57 timestamps
-
-
-```{r}
+#Split between train and test data of data_known
 elec_train=window(data_known,start=c(1,1),end=c(39,35))
 elec_test=window(data_known,start=c(39,36),end=c(48,91))
 ```
 
-Other definition
-
+Variable definition:
 ```{r}
-
-h2 <- 921L
-#h2 <- 184L
-elec_train2 <- head(data_known, round(length(data_known)/2 - h2))
-elec_test2 <- tail(data_known, h2)
-```
-
-```{r}
-elec_train <- elec_train2
-elec_test <- elec_test2
-```
-
-
-```{r}
+# Power
 data_known_Power <- data_known[,1]
 elec_train_Power <- elec_train[,1]
 elec_test_Power <- elec_test[,1]
+# Temp
 data_known_Temp <- data_known[,2]
 elec_train_Temp <- elec_train[,2]
 elec_test_Temp <- elec_test[,2]
+# To forecast
 elec_forcast_Temp <- data_to_forecast[,2]
+```
+
+Let's have an overview of the Power and Temp data:
+```{r}
+print("Summary for the data known concerning Power: ")
 summary(data_known_Power)
+print("Summary for the data known concerning Temperature: ")
 summary(data_known_Temp)
 ```
 ```{r}
-ggtsdisplay(data_known_Power)
+autoplot(elec_train_Power,series='Train data') + 
+  autolayer(elec_test_Power,series='Test data') + 
+  ggtitle ('Power Consumption - Datasets overview') +
+  xlab('Time') +
+  ylab('Consumption (kW)')
 ```
-Seasonal pattern
 
+# Exploratory analysis
+
+Before performing any EDA on the data, we need to understand the three components of a time series data:
+
+- Trend: A long-term increase or decrease in the data is referred to as a trend => There is no specific trend here in our dataset
+
+- Seasonal: When a series is influenced by seasonal factors i.e. quarter of the year, month or days of a week seasonality exists in the series. It is always of a fixed and known period. => In our case, we can see that the time series data is seasonal (see the following seasonal pattern figure for information). Here, the fixed and known period here is 96, which is the number of timestamps aquisition along a day (every 15 minutes)
+
+Seasonal pattern for Power:
 ```{r}
 plot(data_known_Power[1:96],type="l",ylim=c(min(data_known_Power),max(data_known_Power)))
 for (i in 1:4603) lines(data_known_Power[(1+96*i):(96*(i+1))])
 ```
+We can clearly observe that there is a seasonal pattern here for the Power variable.
 
-
-
-
-FORECASTING WITHOUT COVARIATES (Power)
-
-1- Holt-Winters exponential smoothing
+- Cyclic: When data exhibit rises and falls that are not of the fixed period we call it a cyclic pattern => No specific cyclic trend here
 
 ```{r}
-fit1=hw(elec_train_Power,lambda="auto")
-prev1=forecast(fit1,h=921)
-autoplot(prev1) + autolayer(elec_test_Power, series="true data")+
-autolayer(prev1$mean, series="HW forecasts")
+ggtsdisplay(data_known_Power)
+ggtsdisplay(data_known_Temp)
 ```
-Frequency is too high to use Holt-Winters = Holt-Winters is really made for shorter seasonal periods.
+Here are the differents plots which permits to validate my arguments about Trend, Seasonal and Cyclic behavior:
 
-2- SARIMA model
+Decomposition of Power timeseries:
+```{r}
+components.ts = decompose(data_known_Power)
+plot(components.ts)
+```
+Decomposition of Temp timeseries:
+```{r}
+components.ts = decompose(data_known_Temp)
+plot(components.ts)
+```
+
+# Correlation Analysis
+
+Is there a correlation between Power And Temperature ?
+
+Let's get the Correlation coefficient thanks to the pearson method, which mesures the parametric correlation between two quantitative variables:
 
 ```{r}
-fit2=auto.arima(elec_train_Power,lambda="auto")
-prev2=forecast(fit2, h=921)
-autoplot(elec_test_Power)+autolayer(prev2$mean,series="SARIMA without covariate")
+cor.test(data$Power, data$Temp, method = "pearson")
+```
+Conclusion:
+- Cor = r = 0.48 which means there is a correlation between Temp and Power.
+
+It is seen in the following graph:
+
+```{r}
+ggscatterstats(data = data, x = Temp, y = Power)
+```
+Note : For the next prediction, we will apply a covariate analysis 
+(ie include the exterior temperature in the prediction) 
+only when the model prediction seems to be relevant enough to analyse it.
+
+## EXPONENTIAL SMOOTHING - FORECASTING BY DEFINITION WITHOUT COVARIATES
+
+#0- Simple Exponential Smoothing - Forecasting with a constant
+
+```{r}
+fitHW0=HoltWinters(elec_train_Power, alpha=NULL,beta=FALSE,gamma=FALSE)
+prevHW0 <- predict(fitHW0,n.ahead=921)
+autoplot(elec_test_Power) + autolayer(elec_test_Power, series="true data")+
+autolayer(prevHW0, series="HW forecasts")
 ```
 RMSE :
 ```{r}
-print(sqrt(mean((prev2$mean-elec_test_Power)^2)))
+print(sqrt(mean((prevHW0-elec_test_Power)^2)))
 ```
 
+Here, the RMSE is very high and we prefer to analyze other methods as this one
+is not relevant for our prediction.
 
-```{r}
-autoplot(diff(elec_train_Power,lag = 96))
-```
-
-
-Forecasting with covariates
-
-3 - Auto Arima
+#1- Non seasonal Holt-Winters smoothing - Forecasting with a linear trend
 
 ```{r}
-elec_train_Temp_ts <- elec_train[,1] <- list(NULL) 
-elec_train_Temp_ts
+fitHW1=HoltWinters(elec_train_Power,alpha=NULL,beta=NULL,gamma=FALSE)
+prevHW1 <- predict(fitHW1,n.ahead=921)
+autoplot(elec_test_Power) + autolayer(elec_test_Power, series="true data")+
+autolayer(prevHW1, series="Non seasonal Holt-Winters smoothing")
+```
+
+RMSE :
+```{r}
+print(sqrt(mean((prevHW1-elec_test_Power)^2)))
+```
+
+Here, this method is also not relevant for our study as the prediction is very
+far from the test dataset, and the RMSE is also very high.
+
+#2- Additive seasonal Holt-Winters - Forecasting with a linear trend plus a 
+pattern
+
+```{r}
+fitHW2=HoltWinters(elec_train_Power,alpha=NULL,beta=NULL,gamma=NULL, 
+                   seasonal = 'additive')
+prevHW2 <- predict(fitHW2,n.ahead=921)
+autoplot(elec_test_Power) + autolayer(elec_test_Power, series="true data")+
+autolayer(prevHW2, series="HW add")
+```
+RMSE :
+```{r}
+print(sqrt(mean((prevHW2-elec_test_Power)^2)))
+```
+
+For the Additive seasonal HW, the plot looks great as the predicted value 
+is pretty close to the test value. The RMSE value is equal to 17.06, 
+which is for the moment the lowest value observed. Let's check now the 
+Multiplicative approach of seasonal HW.
+
+#2- Multiplicative seasonal Holt-Winters
+
+```{r}
+fitHW3=HoltWinters(elec_train_Power, alpha=NULL,beta=NULL,gamma=NULL, 
+                   seasonal = "multi")
+prevHW3 <- predict(fitHW3,n.ahead=921)
+autoplot(elec_test_Power) + 
+  autolayer(elec_test_Power, series="true data") +
+  autolayer(prevHW3, series="HW forecasts multiplicative")
+```
+RMSE :
+```{r}
+print(sqrt(mean((prevHW3-elec_test_Power)^2)))
+```
+
+The plot looks pretty similar to the previous one, as well as the RMSE value.
+It means that we slightly improved the prediction values here.
+
+Let's now have an overview of the different HW methods observed here.
+Note: We assume that the "Simple Exponential Smoothing" and the 
+"Non seasonal Holt-Winters smoothing" plot are not necessary 
+as their result are not relevant
+
+```{r}
+autoplot(elec_test_Power, series="true data") +
+  autolayer(prevHW3, series="HW forecasts multiplicative") +
+  autolayer(prevHW2, series="HW forecasts additive")
 ```
 
 
+# Conclusion for HW prediction:
+
+Concerning the Holt Winters methods, the best predictions is the model 
+called 'fitHW3' which relates to the Multiplicative seasonal Holt-Winters, 
+with a RMSE value at 16,47.
+
+##2- SARIMA model
+
+FORECASTING WITHOUT COVARIATES (Power Only)
+
 ```{r}
-fit3=auto.arima(elec_train[,"Power"],xreg=elec_train[,"Temp"])
-prev3=forecast(fit3,h=921,xreg=elec_test_Temp)
-autoplot(elec_test_Power)+autolayer(prev3$mean)
+fitS1=auto.arima(elec_train_Power,lambda="auto")
+prevS1=forecast(fitS1, h=921)
+autoplot(elec_test_Power) +
+  autolayer(prevS1$mean,series="SARIMA without covariate")
 ```
+RMSE :
 ```{r}
-print(sqrt(mean((prev3$mean-elec_test_Power)^2)))
+print(sqrt(mean((prevS1$mean-elec_test_Power)^2)))
 ```
+
+The RMSE value is higher than the "Multiplicative seasonal Holt-Winters"
+method. Let's check the model more into details:
+
 ```{r}
-summary(fit3)
+summary(fitS1)
 ```
+
+Let's see if the Temperature covariate variable improves the model :
+
 ```{r}
-checkresiduals(fit3)
+fitS1_Cov=auto.arima(elec_train_Power,xreg=elec_train_Temp,lambda="auto")
+prevS1_Cov=forecast(fitS1_Cov,h=921,xreg=elec_test_Temp)
+autoplot(elec_test_Power) +
+  autolayer(prevS1_Cov$mean,series="SARIMA with covariate")
 ```
-P-value is very low and it seems that there is not really a relationship between Power and Temp :
+
+RMSE :
 ```{r}
-plot(elec_train[,"Power"],elec_train[,"Temp"])
+print(sqrt(mean((prevS1_Cov$mean-elec_test_Power)^2)))
 ```
+
+The RMSE value is slightly improved. Let's go more into details:
+
+```{r}
+summary(fitS1_Cov)
+```
+
+We can try to choose manually the order of the SARIMA Model.
+
+In order to modelize the stochastic part of the times series, we have
+to remove the deterministic part (trend + seasonal pattern). 
+For that, let's remove it by differentiating:
+
+```{r}
+tmp=diff(elec_train_Power,lag=96)
+autoplot(tmp)
+```
+
+The Augmented Dickey-Fuller test evaluates if the time series is
+stationary:
+```{r}
+adf.test(tmp)
+```
+After differentiating our time series to remove trend +
+seasonal pattern, we have to check that the residual series is
+not a white noise:
+
+```{r}
+Box.test(tmp,lag=96,type="Ljung-Box")
+```
+As the p-value is very low, we assume it is not a white noise.
+
+It seems approximately stationary. Let’s look at the ACF and PACF
+```{r}
+ggtsdisplay(tmp)
+```
+There is a significant ACF at lag 96.
+```{r}
+#fit_manual=Arima(tmp, order=c(0,0,96))
+#checkresiduals(fit_manual)
+```
+Actually, the model is too heavy to be compiled on my laptop.
+The final model that I wanted to test is not possible to be run neither:
+
+We can test a SARIMA (0,0,96)(0,1,1)96
+```{r}
+#fit_manual=Arima(tmp, order=c(0,0,96), seasonal=c(0,1,1),lambda = "auto")
+#checkresiduals(fit_manual)
+```
+
+This method takes too much time on my laptop. I decided to focus on auto arima
+solution.
+
 
 ## Forecasting with a auto-regressive neural network
 
 ```{r}
-fit4=nnetar(elec_train[,"Power"],T=96)
-print(fit4)
-prevNN=forecast(fit4,h=921)
-autoplot(elec_test_Power)+autolayer(prevNN$mean)
+fitNN1=nnetar(elec_train_Power,T=96)
+print(fitNN1)
+prevNN1=forecast(fitNN1,h=921)
+autoplot(elec_test_Power)+autolayer(prevNN1$mean)
 ```
 RMSE :
 ```{r}
-print(sqrt(mean((prevNN$mean-elec_test_Power)^2)))
+print(sqrt(mean((prevNN1$mean-elec_test_Power)^2)))
+```
+
+```{r}
+round(accuracy(fitNN1),2)
 ```
 
 Manual improvements as the result proposed by the default settings are not suitable :
 
 ```{r}
-fit5=nnetar(elec_train[,"Power"],p=8,P=10,T=96)
-print(fit5)
-prevNN5=forecast(fit5,h=921)
-autoplot(elec_test_Power)+autolayer(prevNN5$mean)
+fitNN2=nnetar(elec_train_Power,p=8,P=10,T=96)
+print(fitNN2)
+prevNN2=forecast(fitNN2,h=921)
+autoplot(elec_test_Power)+autolayer(prevNN2$mean)
 ```
 
 RMSE :
 ```{r}
-print(sqrt(mean((prevNN5$mean-elec_test_Power)^2)))
+print(sqrt(mean((prevNN2$mean-elec_test_Power)^2)))
+```
+
+```{r}
+round(accuracy(fitNN2),2)
 ```
 
 Forecast based on Power only with NN
 
 ```{r}
-autoplot(forecast(fit5,h=96))
+autoplot(forecast(fitNN2,h=96))
 ```
 
 ## Forecasting with a auto-regressive neural network with covariates
 
 ```{r}
-fit5=nnetar(elec_train[,"Power"], xreg=elec_train[,"Temp"],  T=96)
-print(fit5)
-prevNN5=forecast(fit5, xreg=elec_test[,"Temp"], h=921)
-autoplot(elec_test_Power)+autolayer(prevNN5$mean)
+fitNN3=nnetar(elec_train_Power, xreg=elec_train_Temp,  T=96)
+print(fitNN3)
+prevNN3=forecast(fitNN3, xreg=elec_test_Temp, h=921)
+autoplot(elec_test_Power)+autolayer(prevNN3$mean)
 ```
 
 RMSE :
 ```{r}
-print(sqrt(mean((prevNN5$mean-elec_test_Power)^2)))
+print(sqrt(mean((prevNN3$mean-elec_test_Power)^2)))
+```
+
+```{r}
+round(accuracy(fitNN3),2)
 ```
 
 Manual improvements as the result proposed by the default settings are not suitable :
 
 ```{r}
-fit6=nnetar(elec_train[,"Power"], xreg=elec_train[,"Temp"],p=8,P=10,T=96)
-print(fit6)
-prevNN6=forecast(fit6, xreg=elec_test[,"Temp"],h=921)
-autoplot(elec_test_Power)+autolayer(prevNN6$mean)
+fitNN4=nnetar(elec_train_Power, xreg=elec_train_Temp,p=8,P=10,T=96)
+print(fitNN4)
+prevNN4=forecast(fitNN4, xreg=elec_test_Temp,h=921)
+autoplot(elec_test_Power)+autolayer(prevNN4$mean)
 ```
 
 RMSE :
 ```{r}
-print(sqrt(mean((prevNN6$mean-elec_test_Power)^2)))
+print(sqrt(mean((prevNN4$mean-elec_test_Power)^2)))
 ```
+
+```{r}
+round(accuracy(fitNN4),2)
+```
+
 
 Forecast based on Power and Temp with NN
 
 ```{r}
-forecast_NN_Cov <- forecast(fit6,xreg=elec_forcast_Temp,h=96)
-autoplot(forecast_NN_Cov)
+fit_final <- nnetar(data_known_Power,model=fitNN4,xreg=data_known_Temp)
+elec_forecast_Power <- forecast(fit_final,xreg=elec_forcast_Temp,h=96)
+autoplot(elec_forecast_Power)
+```
+```{r}
+autoplot(elec_test_Power,series='Test data') + 
+  autolayer(elec_forecast_Power,series='Forecast NN') +
+  ggtitle ('Power Consumption - Datasets overview') +
+  xlab('Time') +
+  ylab('Consumption (kW)')
+```
+
+#Conclusion:
+
+Here is a summary of the different models tested, and the one with * are
+the one selected as the best to forecast our values:
+-- Model	/ RMSE
+Simple Exponential Smoothing	/ 60,67
+Non seasonal Holt-Winters smoothing	/ 318,09
+Additive seasonal Holt-Winters	/ 17,05
+*Multiplicative seasonal Holt-Winters	/ 16,47
+Auto-Arima Power Only	/ 27,99
+Auto-Arima Covariate	/ 27,71
+Forecasting with a auto-regressive neural network (NN1)	/ 78,69
+Forecasting with manual improved neural network (NN2)	/ 13,13
+Forecasting with a auto-regressive neural network with covariates (NN3)	/ 77,26
+*Forecasting with manual improved neural network with covariates (NN4)	/ 11,94
+
+# Data output
+```{r}
+# Output CSV for Multiplicative seasonal Holt-Winters
+fitHW_final=HoltWinters(data_known_Power, alpha=NULL,beta=NULL,gamma=NULL, 
+                   seasonal = "multi")
+prevHW_final <- predict(fitHW_final,n.ahead=96)
+write.csv2(prevHW_final, "prevHW_final.csv", row.names = FALSE,  col.names=FALSE)
+
+# Output CSV for Multiplicative seasonal Holt-Winters
+write.csv2(elec_forecast_Power, "elec_forecast_Power.csv", row.names = FALSE,  col.names=FALSE)
 ```
