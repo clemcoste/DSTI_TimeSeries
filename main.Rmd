@@ -19,6 +19,7 @@ Two prediction of the 96 timestamps, based on the two best prediction methods.
 
 # Package installation:
 
+
 ```{r}
 #Read Excel Files
 #install.packages("readxl")
@@ -26,6 +27,8 @@ Two prediction of the 96 timestamps, based on the two best prediction methods.
 #install.packages("fpp2")
 #Time Series Analysis and Computational Finance
 #install.packages("tseries")
+#R packages designed for data science
+#install.packages("tidyverse")
 ```
 
 # Import libraries:
@@ -41,6 +44,8 @@ library(forecast)
 library(tseries)
 # Scatter stats
 library(ggstatsplot)
+# Tidyverse
+library(tidyverse)
 ```
 
 # Data importation:
@@ -49,7 +54,7 @@ library(ggstatsplot)
 'data_raw <- read_excel("data\\raw\\Elec-train.xlsx")
 data <- read_excel("data\\processed\\Elec-train-processed-2.xlsx", col_names = TRUE, col_types = c("date", "numeric", "numeric"))
 '
-data <- read_csv2("data\\processed\\Elec-train-processed-2.csv", col_names = TRUE, col_types = c("n", "n"))
+data <- read_csv2("data/processed/Elec-train-processed-2.csv", col_names = TRUE, col_types = c("n", "n"))
 ```
 
 # Exploratory analysis / Data overview:
