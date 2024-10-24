@@ -3,7 +3,7 @@
 
 ## Subject
 
-![alt text]([https://github.com/clemcoste/DSTI_TimeSeries/blob/main/doc/Figure1_Elec-train-excel.png](https://github.com/clemcoste/DSTI_TimeSeries/blob/e3d33138b3f80de3f25dda837a27c2e24413f8a5/doc/Figure1_Elec-train-excel.png)?raw=true)
+![Figure 1](https://github.com/clemcoste/DSTI_TimeSeries/blob/main/doc/Figure1_Elec-train-excel.png)
 
 The file Elec-train.xlsx contains electricity consumption (kW) and outdoor air temperature for one building.
 These quantities are measured every 15 minutes, from 1/1/2010 1:15 to 2/17/2010 23:45. In addition, outdoor air temperature are available for 2/18/2010. The goal is to forecast electricity consumption (kW) for 2/18/2010.
@@ -19,18 +19,18 @@ The grading will take into account:
 
 ## Files details
 
-.
-├── doc                      # Examination PDF file
-├── data                     # Data files
-│   ├── processed            # Processed Excel data files
-│   └── raw                  # Raw Excel data files
-├── COSTE.pdf                # Final report in PDF
-├── COSTE.xlsx               # Output data for examination - XLSX file
-├── elec_forecast_Power.csv  # Output CSV - Forecast based on Power and Temp with NN
-├── main.Rmd                 # R Markdown
-├── main.nb.html             # R Markdown - HTML Export
-└── prevHW_final.csv         # Output CSV for Multiplicative seasonal Holt-Winters
+.<br />
+├── doc&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp; # Examination PDF file<br />
+├── data&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# Data files<br />
+│   ├── processed&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# Processed Excel data files<br />
+│   └── raw&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# Raw Excel data files<br />
+├── COSTE.pdf&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# Final report in PDF<br />
+├── COSTE.xlsx&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# Output data for examination - XLSX file<br />
+├── elec_forecast_Power.csv&ensp;&ensp;# Output CSV - Forecast based on Power and Temp with NN<br />
+├── main.Rmd&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# R Markdown<br />
+├── main.nb.html&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# R Markdown - HTML Export<br />
+└── prevHW_final.csv&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# Output CSV for Multiplicative seasonal Holt-Winters<br /><br />
 
-Professor : Julien JACQUES
+Professor : Julien JACQUES<br /><br />
 
 Examination committed on Sep 29, 2022
