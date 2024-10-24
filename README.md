@@ -22,8 +22,8 @@ The grading will take into account:
 .<br />
 ├── doc&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp; # Examination PDF file<br />
 ├── data&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# Data files<br />
-│   ├── processed&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# Processed Excel data files<br />
-│   └── raw&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# Raw Excel data files<br />
+&ensp;│&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;├── processed&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# Processed Excel data files<br />
+&ensp;│&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;└── raw&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# Raw Excel data files<br />
 ├── COSTE.pdf&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# Final report in PDF<br />
 ├── COSTE.xlsx&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;# Output data for examination - XLSX file<br />
 ├── elec_forecast_Power.csv&ensp;&ensp;# Output CSV - Forecast based on Power and Temp with NN<br />
